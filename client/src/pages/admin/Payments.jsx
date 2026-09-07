@@ -2,42 +2,41 @@ import { useEffect, useState } from "react";
 import api from "../../api";
 import { Table, Spinner } from "react-bootstrap";
 
-function Users() {
-  const [users, setUsers] = useState([]);
+function Payments() {
+  const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
-  const [roleFilter, setRoleFilter] = useState("All Users");
-  const [sortDir, setSortDir] = useState("asc"); // 'asc' = 1 -> N, 'desc' = N -> 1
+  const [statusFilter, setStatusFilter] = useState("All");
+  const [sortDir, setSortDir] = useState("desc");
   const [page, setPage] = useState(1);
   const [lastPage, setLastPage] = useState(1);
-  const [totalUsers, setTotalUsers] = useState(0);
+  const [totalPayments, setTotalPayments] = useState(0);
 
-  // Fetch users when search, roleFilter, sortDir, or page changes
   useEffect(() => {
     const timer = setTimeout(() => {
-      fetchUsers();
+      fetchPayments();
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [search, roleFilter, sortDir, page]);
+  }, [search, statusFilter, sortDir, page]);
 
-  const fetchUsers = async () => {
+  const fetchPayments = async () => {
     try {
       setLoading(true);
-      const res = await api.get("/admin/users", {
+      const res = await api.get("/admin/payments", {
         params: {
           search,
-          role: roleFilter,
+          status: statusFilter,
           sort: sortDir,
           page,
         },
       });
 
-      setUsers(res.data.data || []);
+      setPayments(res.data.data || []);
       setLastPage(res.data.last_page || 1);
-      setTotalUsers(res.data.total || 0);
+      setTotalPayments(res.data.total || 0);
     } catch (err) {
-      console.error(err);
+      console.error("Fetch payments error:", err);
     } finally {
       setLoading(false);
     }
@@ -49,10 +48,10 @@ function Users() {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this user?")) return;
+    if (!window.confirm("Are you sure you want to delete this payment record?")) return;
     try {
-      await api.delete(`/admin/users/${id}`);
-      fetchUsers();
+      await api.delete(`/admin/payments/${id}`);
+      fetchPayments();
     } catch (err) {
       console.error(err);
     }
@@ -61,14 +60,12 @@ function Users() {
   const handleDownloadData = () => {
     const csvContent =
       "data:text/csv;charset=utf-8," +
-      ["ID,Name,Email,Tier,Role,Created At"].join(",") +
+      ["ID,Transaction ID,Customer Name,Customer Email,Booking ID,Amount,Method,Status,Paid At"].join(",") +
       "\n" +
-      users
+      payments
         .map(
-          (u) =>
-            `${u.id},"${u.name}","${u.email}","${u.membership_tier || "Standard"}","${u.role}","${
-              u.created_at || ""
-            }"`
+          (p) =>
+            `${p.id},"${p.transaction_id}","${p.customer_name}","${p.customer_email}",${p.booking_id},${p.amount},"${p.payment_method}","${p.status}","${p.paid_at || ""}"`
         )
         .join("\n");
     const encodedUri = encodeURI(csvContent);
@@ -76,34 +73,53 @@ function Users() {
     link.setAttribute("href", encodedUri);
     link.setAttribute(
       "download",
-      `users_${roleFilter.toLowerCase().replace(/\s+/g, "_")}.csv`
+      `payments_${statusFilter.toLowerCase()}.csv`
     );
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
 
+  // Helper formatting for VND currency
+  const formatCurrency = (amount) => {
+    return new Intl.NumberFormat("vi-VN", {
+      style: "currency",
+      currency: "VND",
+    }).format(amount || 0);
+  };
+
   // Helper avatar colors
   const avatarColors = [
-    "#f59e0b",
-    "#10b981",
     "#3b82f6",
+    "#10b981",
+    "#f59e0b",
     "#8b5cf6",
     "#ec4899",
     "#06b6d4",
-    "#f97316",
   ];
 
-  // Helper membership tier badge color
-  const getTierBadgeStyle = (tier = "Standard") => {
-    const t = tier.toLowerCase();
-    if (t === "vip" || t === "platinum") {
-      return { background: "#7c3aed", color: "#ffffff" };
+  // Helper method badges
+  const getMethodBadge = (method = "VNPAY") => {
+    const m = method.toUpperCase();
+    if (m.includes("VNPAY")) {
+      return { bg: "#eff6ff", color: "#1d4ed8", border: "#bfdbfe", icon: "fa-university" };
     }
-    if (t === "gold") {
-      return { background: "#d97706", color: "#ffffff" };
+    if (m.includes("MOMO")) {
+      return { bg: "#fdf2f8", color: "#be185d", border: "#fbcfe8", icon: "fa-wallet" };
     }
-    return { background: "#e2e8f0", color: "#334155" };
+    return { bg: "#f8fafc", color: "#334155", border: "#e2e8f0", icon: "fa-credit-card" };
+  };
+
+  // Helper status badges
+  const getStatusBadge = (status = "success") => {
+    const s = status.toLowerCase();
+    if (s === "success" || s === "paid") {
+      return { bg: "#dcfce7", color: "#15803d", label: "Success" };
+    }
+    if (s === "pending") {
+      return { bg: "#fef3c7", color: "#b45309", label: "Pending" };
+    }
+    return { bg: "#fee2e2", color: "#b91c1c", label: "Failed" };
   };
 
   return (
@@ -129,7 +145,7 @@ function Users() {
               letterSpacing: "-0.5px",
             }}
           >
-            Users Data
+            Payment Transactions
           </h3>
           <div
             style={{
@@ -139,7 +155,7 @@ function Users() {
               marginTop: "4px",
             }}
           >
-            Home / Dashboard / <span style={{ color: "#475569" }}>Users Data</span>
+            Home / Dashboard / <span style={{ color: "#475569" }}>Payment</span>
           </div>
         </div>
 
@@ -154,12 +170,12 @@ function Users() {
               border: "1px solid #e2e8f0",
               borderRadius: "12px",
               padding: "6px 14px",
-              width: "240px",
+              width: "260px",
             }}
           >
             <input
               type="text"
-              placeholder="Search name or email..."
+              placeholder="Search code, user or email..."
               value={search}
               onChange={(e) => {
                 setSearch(e.target.value);
@@ -193,17 +209,17 @@ function Users() {
             }}
           >
             <i className="fas fa-download" style={{ fontSize: "14px", color: "#64748b" }} />
-            <span>Download Data</span>
+            <span>Download CSV</span>
           </button>
 
-          {/* FILTER BUTTON & DROPDOWN */}
+          {/* FILTER DROPDOWN */}
           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
             <i className="fas fa-filter" style={{ color: "#64748b", fontSize: "14px" }} />
-            <span style={{ fontSize: "14px", fontWeight: "600", color: "#475569" }}>Filter</span>
+            <span style={{ fontSize: "14px", fontWeight: "600", color: "#475569" }}>Status</span>
             <select
-              value={roleFilter}
+              value={statusFilter}
               onChange={(e) => {
-                setRoleFilter(e.target.value);
+                setStatusFilter(e.target.value);
                 setPage(1);
               }}
               style={{
@@ -219,10 +235,66 @@ function Users() {
                 boxShadow: "0 1px 3px rgba(0,0,0,0.02)",
               }}
             >
-              <option value="All Users">All Users</option>
-              <option value="Admin">Admin</option>
-              <option value="User">User</option>
+              <option value="All">All Statuses</option>
+              <option value="success">Success</option>
+              <option value="pending">Pending</option>
+              <option value="failed">Failed</option>
             </select>
+          </div>
+        </div>
+      </div>
+
+      {/* STATS OVERVIEW CARDS */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+          gap: "16px",
+          marginBottom: "24px",
+        }}
+      >
+        <div
+          style={{
+            background: "#ffffff",
+            padding: "20px",
+            borderRadius: "16px",
+            border: "1px solid #e2e8f0",
+            boxShadow: "0 4px 12px rgba(0,0,0,0.02)",
+          }}
+        >
+          <div style={{ fontSize: "12px", fontWeight: "600", color: "#64748b" }}>TOTAL TRANSACTIONS</div>
+          <div style={{ fontSize: "24px", fontWeight: "800", color: "#0f172a", marginTop: "4px" }}>
+            {totalPayments}
+          </div>
+        </div>
+
+        <div
+          style={{
+            background: "#ffffff",
+            padding: "20px",
+            borderRadius: "16px",
+            border: "1px solid #e2e8f0",
+            boxShadow: "0 4px 12px rgba(0,0,0,0.02)",
+          }}
+        >
+          <div style={{ fontSize: "12px", fontWeight: "600", color: "#64748b" }}>ACTIVE GATEWAYS</div>
+          <div style={{ fontSize: "18px", fontWeight: "700", color: "#2563eb", marginTop: "6px" }}>
+            VNPay, MoMo, Visa/Master
+          </div>
+        </div>
+
+        <div
+          style={{
+            background: "#ffffff",
+            padding: "20px",
+            borderRadius: "16px",
+            border: "1px solid #e2e8f0",
+            boxShadow: "0 4px 12px rgba(0,0,0,0.02)",
+          }}
+        >
+          <div style={{ fontSize: "12px", fontWeight: "600", color: "#64748b" }}>PAYMENT STATUS</div>
+          <div style={{ fontSize: "14px", fontWeight: "700", color: "#16a34a", marginTop: "6px" }}>
+            ✓ Real-time Sync Active
           </div>
         </div>
       </div>
@@ -240,7 +312,6 @@ function Users() {
         <Table hover responsive style={{ marginBottom: 0, verticalAlign: "middle" }}>
           <thead>
             <tr style={{ background: "#fafafa", borderBottom: "1px solid #f1f5f9" }}>
-              {/* ID SORTABLE HEADER */}
               <th
                 onClick={toggleSortDir}
                 style={{
@@ -252,7 +323,6 @@ function Users() {
                   cursor: "pointer",
                   userSelect: "none",
                 }}
-                title="Click to toggle ID sorting (1->N or N->1)"
               >
                 ID{" "}
                 <i
@@ -261,22 +331,25 @@ function Users() {
                 />
               </th>
               <th style={{ padding: "18px 24px", color: "#94a3b8", fontSize: "12px", fontWeight: "600", border: "none" }}>
-                Full Name <i className="fas fa-sort" style={{ fontSize: "10px", marginLeft: "4px", color: "#cbd5e1" }} />
+                Txn Ref Code
               </th>
               <th style={{ padding: "18px 24px", color: "#94a3b8", fontSize: "12px", fontWeight: "600", border: "none" }}>
-                Email
+                Customer Name
               </th>
               <th style={{ padding: "18px 24px", color: "#94a3b8", fontSize: "12px", fontWeight: "600", border: "none" }}>
-                Tier
+                Booking Ref
               </th>
               <th style={{ padding: "18px 24px", color: "#94a3b8", fontSize: "12px", fontWeight: "600", border: "none" }}>
-                Role <i className="fas fa-sort" style={{ fontSize: "10px", marginLeft: "4px", color: "#cbd5e1" }} />
+                Amount
               </th>
               <th style={{ padding: "18px 24px", color: "#94a3b8", fontSize: "12px", fontWeight: "600", border: "none" }}>
-                Status <i className="fas fa-sort" style={{ fontSize: "10px", marginLeft: "4px", color: "#cbd5e1" }} />
+                Method
               </th>
               <th style={{ padding: "18px 24px", color: "#94a3b8", fontSize: "12px", fontWeight: "600", border: "none" }}>
-                Created Date <i className="fas fa-sort" style={{ fontSize: "10px", marginLeft: "4px", color: "#cbd5e1" }} />
+                Status
+              </th>
+              <th style={{ padding: "18px 24px", color: "#94a3b8", fontSize: "12px", fontWeight: "600", border: "none" }}>
+                Paid At
               </th>
               <th style={{ padding: "18px 24px", color: "#94a3b8", fontSize: "12px", fontWeight: "600", border: "none", textAlign: "right" }}>
                 Action
@@ -287,43 +360,59 @@ function Users() {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan="8" className="text-center py-5">
+                <td colSpan="9" className="text-center py-5">
                   <Spinner animation="border" variant="primary" />
                 </td>
               </tr>
-            ) : users.length === 0 ? (
+            ) : payments.length === 0 ? (
               <tr>
-                <td colSpan="8" className="text-center py-5 text-muted">
-                  No users found
+                <td colSpan="9" className="text-center py-5 text-muted">
+                  No payment transactions found
                 </td>
               </tr>
             ) : (
-              users.map((u, idx) => {
+              payments.map((p, idx) => {
                 const avatarColor = avatarColors[idx % avatarColors.length];
-                const isRoleAdmin = u.role === "admin";
-                const isRoleUser = u.role === "user" || u.role === "member";
-                const tierStyle = getTierBadgeStyle(u.membership_tier);
+                const methodBadge = getMethodBadge(p.payment_method);
+                const statusBadge = getStatusBadge(p.status);
 
                 return (
                   <tr
-                    key={u.id}
+                    key={p.id}
                     style={{
-                      borderBottom: idx !== users.length - 1 ? "1px solid #f8fafc" : "none",
+                      borderBottom: idx !== payments.length - 1 ? "1px solid #f8fafc" : "none",
                       transition: "background 0.2s ease",
                     }}
                   >
-                    {/* REAL DATABASE ID */}
+                    {/* PAY ID */}
                     <td style={{ padding: "16px 24px", fontSize: "14px", fontWeight: "700", color: "#1e293b" }}>
-                      {u.id}
+                      #{p.id}
                     </td>
 
-                    {/* FULL NAME WITH AVATAR */}
+                    {/* TXN CODE */}
+                    <td style={{ padding: "16px 24px" }}>
+                      <span
+                        style={{
+                          fontFamily: "monospace",
+                          fontWeight: "700",
+                          fontSize: "13px",
+                          color: "#3b82f6",
+                          background: "#eff6ff",
+                          padding: "4px 8px",
+                          borderRadius: "6px",
+                        }}
+                      >
+                        {p.transaction_id}
+                      </span>
+                    </td>
+
+                    {/* CUSTOMER */}
                     <td style={{ padding: "16px 24px" }}>
                       <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                         <div
                           style={{
-                            width: "36px",
-                            height: "36px",
+                            width: "34px",
+                            height: "34px",
                             borderRadius: "50%",
                             background: avatarColor,
                             color: "#ffffff",
@@ -331,83 +420,77 @@ function Users() {
                             alignItems: "center",
                             justifyContent: "center",
                             fontWeight: "700",
-                            fontSize: "14px",
-                            boxShadow: "0 2px 6px rgba(0,0,0,0.1)",
+                            fontSize: "13px",
                           }}
                         >
-                          {(u.name?.charAt(0) || "U").toUpperCase()}
+                          {(p.customer_name?.charAt(0) || "C").toUpperCase()}
                         </div>
-                        <span style={{ fontSize: "14px", fontWeight: "700", color: "#1e293b" }}>
-                          {u.name}
-                        </span>
+                        <div>
+                          <div style={{ fontSize: "14px", fontWeight: "700", color: "#1e293b" }}>
+                            {p.customer_name}
+                          </div>
+                          <div style={{ fontSize: "12px", color: "#94a3b8" }}>{p.customer_email}</div>
+                        </div>
                       </div>
                     </td>
 
-                    {/* EMAIL */}
-                    <td style={{ padding: "16px 24px", fontSize: "14px", color: "#475569" }}>
-                      {u.email}
+                    {/* BOOKING REF */}
+                    <td style={{ padding: "16px 24px", fontSize: "14px", fontWeight: "600", color: "#475569" }}>
+                      #BK-{p.booking_id}
                     </td>
 
-                    {/* MEMBERSHIP TIER (REAL DB FIELD) */}
+                    {/* AMOUNT */}
+                    <td style={{ padding: "16px 24px", fontSize: "14px", fontWeight: "800", color: "#0f172a" }}>
+                      {formatCurrency(p.amount)}
+                    </td>
+
+                    {/* METHOD */}
+                    <td style={{ padding: "16px 24px" }}>
+                      <span
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "6px",
+                          padding: "4px 10px",
+                          borderRadius: "8px",
+                          fontSize: "12px",
+                          fontWeight: "700",
+                          background: methodBadge.bg,
+                          color: methodBadge.color,
+                          border: `1px solid ${methodBadge.border}`,
+                        }}
+                      >
+                        <i className={`fas ${methodBadge.icon}`} style={{ fontSize: "11px" }} />
+                        {p.payment_method}
+                      </span>
+                    </td>
+
+                    {/* STATUS */}
                     <td style={{ padding: "16px 24px" }}>
                       <span
                         style={{
                           display: "inline-block",
                           padding: "4px 12px",
-                          borderRadius: "6px",
-                          fontSize: "12px",
-                          fontWeight: "700",
-                          background: tierStyle.background,
-                          color: tierStyle.color,
-                        }}
-                      >
-                        {u.membership_tier || "Standard"}
-                      </span>
-                    </td>
-
-                    {/* ROLE BADGE FROM DATABASE */}
-                    <td style={{ padding: "16px 24px" }}>
-                      <span
-                        style={{
-                          display: "inline-block",
-                          padding: "5px 14px",
                           borderRadius: "8px",
                           fontSize: "12px",
                           fontWeight: "700",
-                          color: "#ffffff",
-                          backgroundColor: isRoleAdmin ? "#06b6d4" : isRoleUser ? "#22c55e" : "#f97316",
+                          background: statusBadge.bg,
+                          color: statusBadge.color,
                         }}
                       >
-                        {isRoleAdmin ? "Admin" : isRoleUser ? "User" : u.role}
+                        {statusBadge.label}
                       </span>
                     </td>
 
-                    {/* STATUS BADGE */}
-                    <td style={{ padding: "16px 24px" }}>
-                      <span
-                        style={{
-                          display: "inline-block",
-                          padding: "5px 14px",
-                          borderRadius: "8px",
-                          fontSize: "12px",
-                          fontWeight: "700",
-                          color: "#ffffff",
-                          backgroundColor: "#6366f1",
-                        }}
-                      >
-                        Active
-                      </span>
-                    </td>
-
-                    {/* REAL CREATED_AT DATE FROM DB */}
+                    {/* PAID AT */}
                     <td style={{ padding: "16px 24px", fontSize: "13px", color: "#64748b" }}>
-                      {u.created_at || "—"}
+                      {p.paid_at || "—"}
                     </td>
 
                     {/* ACTION */}
                     <td style={{ padding: "16px 24px", textAlign: "right" }}>
                       <button
-                        onClick={() => handleDelete(u.id)}
+                        onClick={() => handleDelete(p.id)}
                         style={{
                           border: "none",
                           background: "#fee2e2",
@@ -421,7 +504,7 @@ function Users() {
                           cursor: "pointer",
                           transition: "all 0.2s ease",
                         }}
-                        title="Delete User"
+                        title="Delete Payment Log"
                       >
                         <i className="fas fa-trash-alt" style={{ fontSize: "13px" }} />
                       </button>
@@ -445,11 +528,10 @@ function Users() {
           }}
         >
           <div style={{ fontSize: "14px", color: "#94a3b8", fontWeight: "500" }}>
-            Showing {users.length > 0 ? (page - 1) * 10 + 1 : 0}-
-            {Math.min(page * 10, totalUsers)} of {totalUsers} Users (Page {page} of {lastPage})
+            Showing {payments.length > 0 ? (page - 1) * 10 + 1 : 0}-
+            {Math.min(page * 10, totalPayments)} of {totalPayments} Payments (Page {page} of {lastPage})
           </div>
 
-          {/* NAV ARROWS AND PAGE NUMBERS */}
           <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
             <button
               disabled={page <= 1}
@@ -466,7 +548,6 @@ function Users() {
                 justifyContent: "center",
                 cursor: page <= 1 ? "not-allowed" : "pointer",
               }}
-              title="Previous Page"
             >
               <i className="fas fa-chevron-left" style={{ fontSize: "12px" }} />
             </button>
@@ -487,7 +568,7 @@ function Users() {
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  cursor: page <= 1 ? "pointer" : "pointer",
+                  cursor: "pointer",
                 }}
               >
                 {p}
@@ -509,7 +590,6 @@ function Users() {
                 justifyContent: "center",
                 cursor: page >= lastPage ? "not-allowed" : "pointer",
               }}
-              title="Next Page"
             >
               <i className="fas fa-chevron-right" style={{ fontSize: "12px" }} />
             </button>
@@ -520,4 +600,4 @@ function Users() {
   );
 }
 
-export default Users;
+export default Payments;

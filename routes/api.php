@@ -17,6 +17,7 @@ use App\Http\Controllers\Api\Admin\DashboardController;
 use App\Http\Controllers\Api\CheckInController;
 use App\Http\Controllers\Api\UserProfileController;
 use App\Http\Controllers\Api\AI\AIChatController;
+use App\Http\Controllers\Api\GoogleAuthController;
 
 /*
 |--------------------------------------------------------------------------

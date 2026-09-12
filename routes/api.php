@@ -33,36 +33,43 @@ Route::get('/check-in', [CheckInController::class, 'query']);
 
 /*
 |--------------------------------------------------------------------------
-| AI ASSISTANT
+| AI ASSISTANT (Chống Spam / DoS với Rate Limit 20 request/phút)
 |--------------------------------------------------------------------------
 */
 
-// Normal JSON
-Route::match(['GET', 'POST'], '/ai/chat', [AIChatController::class, 'chat']);
+Route::middleware('throttle:20,1')->group(function () {
+    // Normal JSON
+    Route::match(['GET', 'POST'], '/ai/chat', [AIChatController::class, 'chat']);
 
-// Real-time streaming
-Route::match(['GET', 'POST'], '/ai/chat/stream', [AIChatController::class, 'stream']);
-use App\Http\Controllers\Api\GoogleAuthController;
+    // Real-time streaming
+    Route::match(['GET', 'POST'], '/ai/chat/stream', [AIChatController::class, 'stream']);
+});
 
 /*
 |--------------------------------------------------------------------------
-| AUTH ROUTES
+| AUTH ROUTES (Chống Brute Force với Rate Limit 10 request/phút)
 |--------------------------------------------------------------------------
 */
 
 Route::prefix('auth')->group(function () {
 
-    Route::post('/register', [AuthController::class, 'register']);
-    Route::post('/login', [AuthController::class, 'login']);
+    Route::middleware('throttle:10,1')->group(function () {
+        Route::post('/register', [AuthController::class, 'register']);
+        Route::post('/login', [AuthController::class, 'login']);
 
-    // Google OAuth 2.0
-    Route::get('/google', [GoogleAuthController::class, 'redirectToGoogle']);
-    Route::get('/google/callback', [GoogleAuthController::class, 'handleGoogleCallback']);
-    Route::post('/google/one-tap', [GoogleAuthController::class, 'oneTap']);
+        // Google OAuth 2.0
+        Route::get('/google', [GoogleAuthController::class, 'redirectToGoogle']);
+        Route::get('/google/callback', [GoogleAuthController::class, 'handleGoogleCallback']);
+        Route::post('/google/one-tap', [GoogleAuthController::class, 'oneTap']);
+    });
+
+    // Silent Refresh Token (Cấp mới Access Token từ HttpOnly Cookie)
+    Route::post('/refresh', [AuthController::class, 'refresh'])->middleware('throttle:30,1');
+    
+    // Đăng xuất (xóa token và thu hồi cookie)
+    Route::post('/logout', [AuthController::class, 'logout']);
 
     Route::middleware('auth:sanctum')->group(function () {
-
-        Route::post('/logout', [AuthController::class, 'logout']);
         Route::get('/me', [AuthController::class, 'me']);
     });
 });

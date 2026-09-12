@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { PaperPlaneTilt, WarningCircle, CheckCircle } from "@phosphor-icons/react";
 import { motion } from "motion/react";
+import { useAuthStore } from "../store/useAuthStore";
 
 export default function RegisterPage() {
   const navigate = useNavigate();
@@ -17,21 +18,11 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const getRedirectTarget = (isAdmin) => {
-      if (isAdmin) return "/admin";
-      const redirectParam = searchParams.get("redirect") || sessionStorage.getItem("auth_redirect");
-      if (redirectParam) {
-        sessionStorage.removeItem("auth_redirect");
-        return redirectParam;
-      }
-      const savedFlights = JSON.parse(localStorage.getItem("selected_flights") || "[]");
-      if (savedFlights.length > 0 && savedFlights[0]?.id) {
-        return `/seat-selection?flight_id=${encodeURIComponent(savedFlights[0].id)}`;
-      }
-      return "/";
-    };
+    const errorParam = searchParams.get("error");
+    if (errorParam) {
+      setError(decodeURIComponent(errorParam));
+    }
 
-    // Lắng nghe kết quả trả về từ Popup Google OAuth
     const handleAuthMessage = (event) => {
       if (
         event.origin !== window.location.origin &&
@@ -44,49 +35,24 @@ export default function RegisterPage() {
       if (event.data?.type === "GOOGLE_AUTH_SUCCESS") {
         const { token, user } = event.data;
         if (token && user) {
-          localStorage.setItem("access_token", token);
-          localStorage.setItem("user", JSON.stringify(user));
-
-          const isAdmin =
-            user.role === 1 ||
-            user.role === "1" ||
-            user.roles?.some((r) => r.name === "admin");
-
+          useAuthStore.getState().setAuth({ user, token });
           setSuccess(`Chào mừng ${user.name || "bạn"}`);
-          setTimeout(() => {
-            window.location.href = getRedirectTarget(isAdmin);
-          }, 600);
+          const savedFlights = JSON.parse(localStorage.getItem("selected_flights") || "[]");
+          const target = (savedFlights.length > 0 && savedFlights[0]?.id)
+            ? `/seat-selection?flight_id=${encodeURIComponent(savedFlights[0].id)}`
+            : "/";
+          setTimeout(() => { window.location.href = target; }, 800);
         }
       } else if (event.data?.type === "GOOGLE_AUTH_ERROR") {
-        setError(event.data.message || "Đăng ký Google không thành công.");
-      }
-    };
-
-    // Kiểm tra nếu popup đã lưu token khi focus lại
-    const handleWindowFocus = () => {
-      const token = localStorage.getItem("access_token");
-      const userRaw = localStorage.getItem("user");
-      if (token && userRaw) {
-        try {
-          const user = JSON.parse(userRaw);
-          const isAdmin =
-            user.role === 1 ||
-            user.role === "1" ||
-            user.roles?.some((r) => r.name === "admin");
-          window.location.href = getRedirectTarget(isAdmin);
-        } catch (e) {}
+        setError(event.data.message || "Đăng nhập Google không thành công.");
       }
     };
 
     window.addEventListener("message", handleAuthMessage);
-    window.addEventListener("focus", handleWindowFocus);
-    return () => {
-      window.removeEventListener("message", handleAuthMessage);
-      window.removeEventListener("focus", handleWindowFocus);
-    };
+    return () => window.removeEventListener("message", handleAuthMessage);
   }, [searchParams, navigate]);
 
-  const handleGoogleLogin = () => {
+  const handleGoogleRegister = () => {
     const width = 500;
     const height = 650;
     const left = window.screen.width / 2 - width / 2;
@@ -113,7 +79,8 @@ export default function RegisterPage() {
     try {
       const response = await fetch("/api/auth/register", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        credentials: "include",
         body: JSON.stringify({ 
           name: regName, 
           email: regEmail, 
@@ -126,8 +93,7 @@ export default function RegisterPage() {
       
       if (data.status === "success") {
         if (data.access_token && data.user) {
-          localStorage.setItem("access_token", data.access_token);
-          localStorage.setItem("user", JSON.stringify(data.user));
+          useAuthStore.getState().setAuth({ user: data.user, token: data.access_token });
           setSuccess("Đăng ký thành công! Đang chuyển tiếp...");
           const savedFlights = JSON.parse(localStorage.getItem("selected_flights") || "[]");
           const target = (savedFlights.length > 0 && savedFlights[0]?.id)

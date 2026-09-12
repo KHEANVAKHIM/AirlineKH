@@ -32,8 +32,6 @@ services:
       MYSQL_USER: airline_user
       MYSQL_PASSWORD: SkyLink@Pass2026
       MYSQL_ROOT_PASSWORD: RootPassword@2026
-    ports:
-      - "3306:3306"
     volumes:
       - dbdata:/var/lib/mysql
     networks:

@@ -1,13 +1,14 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuthStore } from "../../store/useAuthStore";
 
 export default function GoogleOneTap() {
   const navigate = useNavigate();
+  const user = useAuthStore((state) => state.user);
 
   useEffect(() => {
     // Nếu đã đăng nhập thì không hiện One Tap
-    const token = localStorage.getItem("access_token");
-    if (token) return;
+    if (user) return;
 
     const clientId =
       import.meta.env.VITE_GOOGLE_CLIENT_ID ||
@@ -61,6 +62,7 @@ export default function GoogleOneTap() {
             "Content-Type": "application/json",
             Accept: "application/json",
           },
+          credentials: "include",
           body: JSON.stringify({
             credential: response.credential,
           }),
@@ -69,11 +71,7 @@ export default function GoogleOneTap() {
         const data = await res.json();
 
         if (data.status === "success" && data.access_token) {
-          localStorage.setItem("access_token", data.access_token);
-          localStorage.setItem("user", JSON.stringify(data.user));
-
-          // Dispatch event để Navbar/Header cập nhật trạng thái user ngay lập tức
-          window.dispatchEvent(new Event("storage"));
+          useAuthStore.getState().setAuth({ user: data.user, token: data.access_token });
 
           const isAdmin =
             data.user.role === 1 ||
@@ -83,7 +81,7 @@ export default function GoogleOneTap() {
           if (isAdmin) {
             navigate("/admin");
           } else {
-            // Reload nhẹ để đồng bộ toàn bộ app
+            // Đồng bộ nhẹ app
             window.location.reload();
           }
         }
@@ -93,7 +91,7 @@ export default function GoogleOneTap() {
     };
 
     loadGsiScript();
-  }, [navigate]);
+  }, [navigate, user]);
 
   return null; // Component chạy ngầm, không render thẻ DOM cố định
 }

@@ -132,17 +132,33 @@ class GoogleAuthController extends Controller
 
             $user->load('roles');
 
-            // Tạo Sanctum access token
-            $token = $user->createToken('auth_token')->plainTextToken;
+            // 1. Access Token ngắn hạn (15 phút)
+            $accessToken = $user->createToken('access_token', ['*'], now()->addMinutes(15))->plainTextToken;
+
+            // 2. Refresh Token dài hạn (7 ngày)
+            $refreshToken = $user->createToken('refresh_token', ['issue-access-token'], now()->addDays(7))->plainTextToken;
 
             // Chuyển hướng về React Frontend kèm token và thông tin user
             $targetUrl = $frontendUrl . '/auth/callback?' . http_build_query([
                 'status' => 'success',
-                'token' => $token,
+                'token' => $accessToken,
                 'user' => json_encode($user),
             ]);
 
-            return redirect($targetUrl);
+            $isSecure = $request->secure() || str_starts_with($frontendUrl, 'https://');
+            $refreshCookie = cookie(
+                'refreshToken',
+                $refreshToken,
+                60 * 24 * 7,
+                '/',
+                null,
+                $isSecure,
+                true, // HttpOnly
+                false,
+                'Lax'
+            );
+
+            return redirect($targetUrl)->withCookie($refreshCookie);
 
         } catch (Throwable $e) {
             Log::error('Google Auth Callback Error', [
@@ -228,14 +244,33 @@ class GoogleAuthController extends Controller
             }
 
             $user->load('roles');
-            $token = $user->createToken('auth_token')->plainTextToken;
+
+            // 1. Access Token ngắn hạn (15 phút)
+            $accessToken = $user->createToken('access_token', ['*'], now()->addMinutes(15))->plainTextToken;
+
+            // 2. Refresh Token dài hạn (7 ngày)
+            $refreshToken = $user->createToken('refresh_token', ['issue-access-token'], now()->addDays(7))->plainTextToken;
+
+            $isSecure = $request->secure() || str_starts_with(env('FRONTEND_URL', ''), 'https://');
+            $refreshCookie = cookie(
+                'refreshToken',
+                $refreshToken,
+                60 * 24 * 7,
+                '/',
+                null,
+                $isSecure,
+                true, // HttpOnly
+                false,
+                'Lax'
+            );
 
             return response()->json([
                 'status' => 'success',
                 'user' => $user,
-                'access_token' => $token,
+                'access_token' => $accessToken,
                 'token_type' => 'Bearer',
-            ]);
+                'expires_in' => 900,
+            ])->withCookie($refreshCookie);
         } catch (Throwable $e) {
             Log::error('Google One Tap Error', ['error' => $e->getMessage()]);
 

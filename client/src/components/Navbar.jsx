@@ -340,30 +340,16 @@ function AvatarMenu({ user, onLogout }) {
 
 // ─── Main Navbar ──────────────────────────────────────────────────────────────
 
-/**
- * SkyLink World-Class Floating Pill Navbar
- *
- * Architecture:
- *  - Floating pill with glassmorphism (Apple/Linear-inspired)
- *  - Magnetic hover (Stripe-inspired micro-interaction)
- *  - Mega dropdown menu for "Dịch vụ"
- *  - Expandable search bar with spring animation
- *  - Notification panel with badge
- *  - Avatar menu with user context
- *  - Scroll-aware elevation via shadow/blur transitions
- */
+import { useAuthStore } from "../store/useAuthStore";
+
 export default function Navbar() {
   const navigate = useNavigate();
   const location = useLocation();
+
   const [activeLink, setActiveLink] = useState(null);
   const [hoveredItem, setHoveredItem] = useState(null);
-  const [user, setUser] = useState(() => {
-    const saved = localStorage.getItem("user") || sessionStorage.getItem("user");
-    if (saved) {
-      try { return JSON.parse(saved); } catch { return null; }
-    }
-    return null;
-  });
+  const user = useAuthStore((state) => state.user);
+  const clearAuth = useAuthStore((state) => state.clearAuth);
   const [scrollY, setScrollY] = useState(0);
   const [logoutMsg, setLogoutMsg] = useState("");
   const megaRef = useRef(null);
@@ -388,14 +374,10 @@ export default function Navbar() {
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
 
-  const handleLogout = () => {
-    ["access_token", "user"].forEach((k) => {
-      localStorage.removeItem(k);
-      sessionStorage.removeItem(k);
-    });
-    setUser(null);
+  const handleLogout = async () => {
+    await clearAuth();
     setLogoutMsg("Đã đăng xuất thành công.");
-    setTimeout(() => { setLogoutMsg(""); navigate("/"); }, 2000);
+    setTimeout(() => { setLogoutMsg(""); navigate("/"); }, 1500);
   };
 
   // Compute pill elevation on scroll

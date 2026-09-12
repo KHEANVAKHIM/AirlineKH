@@ -159,7 +159,7 @@
                         </tr>
                         <tr>
                             <td class="info-label">Phương thức xác thực:</td>
-                            <td class="info-value" align="right">Google OAuth 2.0</td>
+                            <td class="info-value" align="right">{{ $user->google_id ? 'Google OAuth 2.0' : 'Email & Mật khẩu' }}</td>
                         </tr>
                         <tr>
                             <td class="info-label">Hạng hội viên:</td>

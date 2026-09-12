@@ -4,6 +4,8 @@ import { PaperPlaneTilt, WarningCircle, CheckCircle } from "@phosphor-icons/reac
 // eslint-disable-next-line no-unused-vars
 import { motion } from "motion/react";
 
+import { useAuthStore } from "../store/useAuthStore";
+
 export default function LoginPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -48,8 +50,7 @@ export default function LoginPage() {
       if (event.data?.type === "GOOGLE_AUTH_SUCCESS") {
         const { token, user } = event.data;
         if (token && user) {
-          localStorage.setItem("access_token", token);
-          localStorage.setItem("user", JSON.stringify(user));
+          useAuthStore.getState().setAuth({ user, token });
 
           const isAdmin =
             user.role === 1 ||
@@ -68,17 +69,13 @@ export default function LoginPage() {
 
     // Kiểm tra nếu popup đã lưu token khi focus lại
     const handleWindowFocus = () => {
-      const token = localStorage.getItem("access_token");
-      const userRaw = localStorage.getItem("user");
-      if (token && userRaw) {
-        try {
-          const user = JSON.parse(userRaw);
-          const isAdmin =
-            user.role === 1 ||
-            user.role === "1" ||
-            user.roles?.some((r) => r.name === "admin");
-          window.location.href = getRedirectTarget(isAdmin);
-        } catch (e) {}
+      const user = useAuthStore.getState().user;
+      if (user) {
+        const isAdmin =
+          user.role === 1 ||
+          user.role === "1" ||
+          user.roles?.some((r) => r.name === "admin");
+        window.location.href = getRedirectTarget(isAdmin);
       }
     };
 
@@ -104,33 +101,32 @@ export default function LoginPage() {
   };
 
   const handleLogin = async (e) => {
-  e.preventDefault();
+    e.preventDefault();
 
-  setLoading(true);
-  setError("");
+    setLoading(true);
+    setError("");
 
-  try {
-    const response = await fetch("/api/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        email: loginEmail,
-        password: loginPassword
-      })
-    });
+    try {
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        credentials: "include", // Đính kèm HttpOnly Refresh Cookie
+        body: JSON.stringify({
+          email: loginEmail,
+          password: loginPassword,
+        }),
+      });
 
-    const data = await response.json();
+      const data = await response.json();
 
-    if (data.status === "success") {
-      const storage = rememberMe ? localStorage : sessionStorage;
+      if (data.status === "success") {
+        // Lưu access token trong RAM (Zustand)
+        useAuthStore.getState().setAuth({ user: data.user, token: data.access_token });
 
-      storage.setItem("access_token", data.access_token);
-      storage.setItem("user", JSON.stringify(data.user));
-
-      const isAdmin =
-        data.user.role === 1 ||
-        data.user.role === "1" ||
-        data.user.roles?.some(r => r.name === "admin");
+        const isAdmin =
+          data.user.role === 1 ||
+          data.user.role === "1" ||
+          data.user.roles?.some((r) => r.name === "admin");
 
       setSuccess(`Chào mừng ${data.user.name}`);
 

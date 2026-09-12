@@ -40,6 +40,8 @@ import ChatWidget from "./components/ai/ChatWidget";
 import GoogleOneTap from "./components/auth/GoogleOneTap";
 import { ChatProvider } from "./store/ChatProvider";
 
+import { useAuthStore } from "./store/useAuthStore";
+
 /**
  * Dynamic Page Title Updater based on active route
  */
@@ -99,6 +101,13 @@ function PageTitleUpdater() {
 }
 
 function App() {
+  const checkAuth = useAuthStore((state) => state.checkAuth);
+
+  useEffect(() => {
+    // Tự động kiểm tra phiên đăng nhập an toàn từ HttpOnly Cookie khi mở web
+    checkAuth();
+  }, [checkAuth]);
+
   return (
     <BrowserRouter>
       <PageTitleUpdater />

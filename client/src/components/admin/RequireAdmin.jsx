@@ -1,20 +1,29 @@
 import { Navigate, Outlet } from "react-router-dom";
+import { useAuthStore } from "../../store/useAuthStore";
 
 export default function RequireAdmin() {
-  const rawUser =
-    localStorage.getItem("user") ||
-    sessionStorage.getItem("user");
+  const storeUser = useAuthStore((state) => state.user);
+  const isInitialized = useAuthStore((state) => state.isInitialized);
 
-  if (!rawUser) return <Navigate to="/login" replace />;
+  let user = storeUser;
+  if (!user) {
+    const rawUser = localStorage.getItem("user_profile_cache") || localStorage.getItem("user");
+    if (rawUser) {
+      try {
+        user = JSON.parse(rawUser);
+      } catch {
+        user = null;
+      }
+    }
+  }
 
-  let user;
-  try {
-    user = JSON.parse(rawUser);
-  } catch {
+  if (!user) {
+    // Nếu chưa khởi tạo xong và không có cached user, đợi nhẹ
+    if (!isInitialized) return null;
     return <Navigate to="/login" replace />;
   }
 
-  // chuẩn hoá role
+  // Chuẩn hoá role
   const role =
     user?.role ??
     user?.roles?.[0]?.id ??
@@ -22,7 +31,8 @@ export default function RequireAdmin() {
 
   const isAdmin =
     Number(role) === 1 ||
-    role === "admin";
+    role === "admin" ||
+    user?.roles?.some((r) => r.name === "admin" || Number(r.id) === 1);
 
   return isAdmin ? <Outlet /> : <Navigate to="/" replace />;
 }

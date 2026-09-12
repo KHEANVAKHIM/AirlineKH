@@ -4,6 +4,8 @@ import { PaperPlaneTilt, CheckCircle, WarningCircle, CircleNotch } from "@phosph
 // eslint-disable-next-line no-unused-vars
 import { motion } from "motion/react";
 
+import { useAuthStore } from "../store/useAuthStore";
+
 export default function AuthCallback() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -43,9 +45,8 @@ export default function AuthCallback() {
         try {
           const user = JSON.parse(decodeURIComponent(userRaw));
 
-          // Lưu token vào localStorage ngay lập tức
-          localStorage.setItem("access_token", token);
-          localStorage.setItem("user", JSON.stringify(user));
+          // Cập nhật trạng thái xác thực vào Zustand store (RAM)
+          useAuthStore.getState().setAuth({ user, token });
 
           if (isPopup) {
             try {

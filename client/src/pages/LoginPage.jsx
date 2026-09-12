@@ -206,6 +206,7 @@ export default function LoginPage() {
                 type="email" 
                 placeholder="name@example.com"
                 value={loginEmail}
+                autoComplete="email"
                 onChange={(e) => setLoginEmail(e.target.value)}
                 className="w-full p-4 bg-white border border-zinc-200 rounded-xl text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-blue-600 transition-all font-medium"
                 required
@@ -218,6 +219,7 @@ export default function LoginPage() {
                 type="password" 
                 placeholder="••••••••"
                 value={loginPassword}
+                autoComplete="current-password"
                 onChange={(e) => setLoginPassword(e.target.value)}
                 className="w-full p-4 bg-white border border-zinc-200 rounded-xl text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-blue-600 transition-all font-medium"
                 required

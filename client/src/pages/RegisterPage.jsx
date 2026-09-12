@@ -170,6 +170,7 @@ export default function RegisterPage() {
                 type="text" 
                 placeholder="Nguyễn Văn A"
                 value={regName}
+                autoComplete="name"
                 onChange={(e) => setRegName(e.target.value)}
                 className="w-full p-3.5 bg-white border border-zinc-200 rounded-xl text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-blue-600 transition-all font-medium"
                 required
@@ -182,6 +183,7 @@ export default function RegisterPage() {
                 type="email" 
                 placeholder="name@example.com"
                 value={regEmail}
+                autoComplete="email"
                 onChange={(e) => setRegEmail(e.target.value)}
                 className="w-full p-3.5 bg-white border border-zinc-200 rounded-xl text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-blue-600 transition-all font-medium"
                 required
@@ -194,6 +196,7 @@ export default function RegisterPage() {
                 type="password" 
                 placeholder="Tạo mật khẩu (tối thiểu 6 ký tự)"
                 value={regPassword}
+                autoComplete="new-password"
                 onChange={(e) => setRegPassword(e.target.value)}
                 className="w-full p-3.5 bg-white border border-zinc-200 rounded-xl text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-blue-600 transition-all font-medium"
                 required
@@ -206,6 +209,7 @@ export default function RegisterPage() {
                 type="password" 
                 placeholder="Nhập lại mật khẩu"
                 value={regPasswordConfirm}
+                autoComplete="new-password"
                 onChange={(e) => setRegPasswordConfirm(e.target.value)}
                 className="w-full p-3.5 bg-white border border-zinc-200 rounded-xl text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-blue-600 transition-all font-medium"
                 required

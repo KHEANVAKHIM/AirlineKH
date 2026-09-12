@@ -65,6 +65,8 @@ export default function RegisterPage() {
     );
   };
 
+  const handleGoogleLogin = handleGoogleRegister;
+
   const handleRegister = async (e) => {
     e.preventDefault();
     setLoading(true);

@@ -30,9 +30,13 @@ sudo chmod -R 777 storage bootstrap/cache
 
 composer install --no-dev --optimize-autoloader
 php artisan migrate --force
+php artisan storage:link 2>/dev/null || true
 php artisan config:clear
 php artisan route:clear
 php artisan cache:clear
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
 
 echo "📦 3. Build Frontend React..."
 cd /var/www/AirlineKH/client

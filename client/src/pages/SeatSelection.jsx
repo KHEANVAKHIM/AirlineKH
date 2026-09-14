@@ -4,6 +4,8 @@ import { AirplaneTilt, Armchair, ArrowRight, CircleNotch } from "@phosphor-icons
 import { motion } from "motion/react";
 import BackButton from "../components/BackButton";
 import Navbar from "../components/Navbar";
+import api from "../api";
+import { useAuthStore } from "../store/useAuthStore";
 
 export default function SeatSelection() {
   const navigate = useNavigate();
@@ -34,19 +36,16 @@ export default function SeatSelection() {
 
     const fetchAllSeats = async () => {
       try {
-        const token = localStorage.getItem("access_token") || sessionStorage.getItem("access_token");
-        const headers = token ? { "Authorization": `Bearer ${token}` } : {};
-
         const newSeatsData = {};
         for (const flight of savedFlights) {
-          const res = await fetch(`/api/flights/${flight.id}/seats?trip_type=${searchParams.trip_type || 'one_way'}`, { headers });
-          const data = await res.json();
-          if (res.ok && data.status === "success") {
-            newSeatsData[flight.id] = data.data;
+          const res = await api.get(`/flights/${flight.id}/seats?trip_type=${searchParams.trip_type || 'one_way'}`);
+          if (res.data && res.data.status === "success") {
+            newSeatsData[flight.id] = res.data.data;
           }
         }
         setSeatsData(newSeatsData);
       } catch (err) {
+        console.error("Lỗi tải sơ đồ ghế:", err);
         setError("Lỗi tải sơ đồ ghế. Vui lòng thử lại.");
       } finally {
         setLoading(false);
@@ -95,10 +94,12 @@ export default function SeatSelection() {
       return;
     }
 
-    // Tiến hành gọi API lưu Draft Booking
-    const token = localStorage.getItem("access_token") || sessionStorage.getItem("access_token");
-    if (!token) {
-      alert("Bạn cần đăng nhập để đặt vé!");
+    // Kiểm tra đăng nhập từ Auth Store (RAM / Cookie)
+    const user = useAuthStore.getState().user;
+    const token = useAuthStore.getState().accessToken;
+    if (!user && !token) {
+      sessionStorage.setItem("auth_redirect", "/seat-selection");
+      alert("Bạn cần đăng nhập để đặt vé & giữ chỗ!");
       navigate("/login");
       return;
     }
@@ -120,36 +121,24 @@ export default function SeatSelection() {
         payload.return_seat_ids = selectedSeats.return.map(s => s.id);
       }
 
-      const res = await fetch("/api/bookings/lock-seat", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Accept": "application/json",
-          "Authorization": `Bearer ${token}`
-        },
-        body: JSON.stringify(payload)
-      });
+      const res = await api.post("/bookings/lock-seat", payload);
 
-      if (res.status === 401) {
-        alert("Phiên đăng nhập đã hết hạn hoặc không hợp lệ. Vui lòng đăng nhập lại!");
-        localStorage.removeItem("access_token");
-        sessionStorage.removeItem("access_token");
-        navigate("/login");
-        return;
-      }
-
-      const data = await res.json();
-      if (res.ok && data.status === "success") {
+      if (res.data && res.data.status === "success") {
         // Lưu lại selected_seats và chuyển sang chọn dịch vụ
         localStorage.setItem("selected_seats", JSON.stringify(selectedSeats));
         navigate("/services");
       } else {
-        alert("Lỗi giữ ghế: " + (data.message || "Ghế có thể đã bị người khác chọn."));
-        // Load lại trang để lấy status mới nhất
+        alert("Lỗi giữ ghế: " + (res.data?.message || "Ghế có thể đã bị người khác chọn."));
         window.location.reload();
       }
     } catch (err) {
-      alert("Không thể kết nối tới server.");
+      if (err.response?.status === 401) {
+        sessionStorage.setItem("auth_redirect", "/seat-selection");
+        alert("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại!");
+        navigate("/login");
+      } else {
+        alert("Lỗi giữ ghế: " + (err.response?.data?.message || "Không thể kết nối tới server."));
+      }
     } finally {
       setProcessing(false);
     }

@@ -97,10 +97,17 @@ export default function RegisterPage() {
         if (data.access_token && data.user) {
           useAuthStore.getState().setAuth({ user: data.user, token: data.access_token });
           setSuccess("Đăng ký thành công! Đang chuyển tiếp...");
-          const savedFlights = JSON.parse(localStorage.getItem("selected_flights") || "[]");
-          const target = (savedFlights.length > 0 && savedFlights[0]?.id)
-            ? `/seat-selection?flight_id=${encodeURIComponent(savedFlights[0].id)}`
-            : "/";
+          const redirectParam = sessionStorage.getItem("auth_redirect");
+          let target = "/";
+          if (redirectParam) {
+            sessionStorage.removeItem("auth_redirect");
+            target = redirectParam;
+          } else {
+            const savedFlights = JSON.parse(localStorage.getItem("selected_flights") || "[]");
+            if (savedFlights.length > 0 && savedFlights[0]?.id) {
+              target = `/seat-selection?flight_id=${encodeURIComponent(savedFlights[0].id)}`;
+            }
+          }
           setTimeout(() => { window.location.href = target; }, 1000);
         } else {
           setSuccess("Đăng ký thành công! Đang chuyển đến trang đăng nhập...");

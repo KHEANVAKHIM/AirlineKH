@@ -4,6 +4,7 @@ import { motion } from "motion/react";
 import { SuitcaseRolling, ForkKnife, ShieldCheck, Lightning, Check, ArrowRight } from "@phosphor-icons/react";
 import BackButton from "../components/BackButton";
 import Navbar from "../components/Navbar";
+import api from "../api";
 
 export default function ServiceSelection() {
   const navigate = useNavigate();
@@ -19,9 +20,9 @@ export default function ServiceSelection() {
 
   // Gọi API lấy dịch vụ thật từ DB
   useEffect(() => {
-    fetch("/api/services")
-      .then(res => res.json())
-      .then(data => {
+    api.get("/services")
+      .then(res => {
+        const data = res.data;
         const list = Array.isArray(data?.data) ? data.data : (Array.isArray(data) ? data : []);
         setServices(list);
       })

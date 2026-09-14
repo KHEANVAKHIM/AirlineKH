@@ -6,6 +6,8 @@ import { motion } from "motion/react";
 import BackButton from "../components/BackButton";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
+import api from "../api";
+import { useAuthStore } from "../store/useAuthStore";
 
 // Real Brand Payment Logos
 const VnpayBrandLogo = () => (
@@ -114,9 +116,11 @@ export default function Checkout() {
       }
     }
 
-    const token = localStorage.getItem("access_token") || sessionStorage.getItem("access_token");
+    const user = useAuthStore.getState().user;
+    const token = useAuthStore.getState().accessToken;
     
-    if (!token) {
+    if (!user && !token) {
+      sessionStorage.setItem("auth_redirect", "/checkout");
       alert("Bạn cần đăng nhập để đặt vé!");
       navigate("/login");
       return;
@@ -147,20 +151,11 @@ export default function Checkout() {
         }))
       };
 
-      const bookingRes = await fetch(`/api/bookings`, {
-        method: "POST",
-        headers: { 
-          "Content-Type": "application/json",
-          "Accept": "application/json",
-          "Authorization": `Bearer ${token}`
-        },
-        body: JSON.stringify(checkoutPayload)
-      });
+      const bookingRes = await api.post("/bookings", checkoutPayload);
+      const bookingData = bookingRes.data;
 
-      const bookingData = await bookingRes.json();
-
-      if (!bookingRes.ok || bookingData.status !== "success") {
-        alert("Lỗi đặt vé: " + (bookingData.message || "Đơn giữ chỗ có thể đã hết hạn (15 phút)."));
+      if (!bookingData || bookingData.status !== "success") {
+        alert("Lỗi đặt vé: " + (bookingData?.message || "Đơn giữ chỗ có thể đã hết hạn (15 phút)."));
         setLoading(false);
         return;
       }
@@ -177,36 +172,33 @@ export default function Checkout() {
       }
 
       // BƯỚC 2: THANH TOÁN MOCK API
-      const payRes = await fetch("/api/bookings/pay", {
-        method: "POST",
-        headers: { 
-          "Content-Type": "application/json",
-          "Accept": "application/json",
-          "Authorization": `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          booking_ids: createdBookingIds,
-          payment_method: paymentMethod
-        })
+      const payRes = await api.post("/bookings/pay", {
+        booking_ids: createdBookingIds,
+        payment_method: paymentMethod
       });
 
-      const payData = await payRes.json();
+      const payData = payRes.data;
 
-      if (payRes.ok && payData.status === "success") {
+      if (payData && payData.status === "success") {
         alert(`Thanh toán thành công!\nMã đặt chỗ của bạn là: ${pnrCodes.join(', ')}`);
         localStorage.removeItem("selected_flights");
         localStorage.removeItem("selected_services");
         localStorage.removeItem("selected_seats");
         navigate("/my-bookings");
       } else {
-        alert("Thanh toán thất bại: " + (payData.message || "Vui lòng thử lại."));
-        // Lỗi thanh toán -> Booking sẽ ở trạng thái pending và bị cron xoá sau 5 phút
+        alert("Thanh toán thất bại: " + (payData?.message || "Vui lòng thử lại."));
         navigate("/my-bookings");
       }
 
     } catch (error) {
       console.error("Lỗi khi gọi API:", error);
-      alert("Không thể kết nối tới server.");
+      if (error.response?.status === 401) {
+        sessionStorage.setItem("auth_redirect", "/checkout");
+        alert("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại!");
+        navigate("/login");
+      } else {
+        alert("Lỗi đặt vé: " + (error.response?.data?.message || "Không thể kết nối tới server."));
+      }
     } finally {
       setLoading(false);
     }
@@ -471,8 +463,12 @@ export default function Checkout() {
                       return;
                     }
 
-                    const token = localStorage.getItem("access_token") || sessionStorage.getItem("access_token");
-                    if (!token) return navigate("/login");
+                    const user = useAuthStore.getState().user;
+                    const token = useAuthStore.getState().accessToken;
+                    if (!user && !token) {
+                      sessionStorage.setItem("auth_redirect", "/checkout");
+                      return navigate("/login");
+                    }
                     setLoading(true);
                     try {
                       const flightId = flights[0].id;
@@ -487,21 +483,23 @@ export default function Checkout() {
                           return_seat_id: selectedSeats.return?.[index]?.id || null
                         }))
                       };
-                      const res = await fetch(`/api/bookings`, {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json", "Accept": "application/json", "Authorization": `Bearer ${token}` },
-                        body: JSON.stringify(checkoutPayload)
-                      });
-                      const data = await res.json();
-                      if (res.ok && data.status === "success") {
+                      const res = await api.post(`/bookings`, checkoutPayload);
+                      const data = res.data;
+                      if (data && data.status === "success") {
                         alert("Đã giữ chỗ thành công! Vui lòng thanh toán trong thời gian quy định.");
                         localStorage.removeItem("selected_flights"); localStorage.removeItem("selected_services"); localStorage.removeItem("selected_seats");
                         navigate("/my-bookings");
                       } else {
-                        alert("Lỗi đặt vé: " + (data.message || "Vui lòng thử lại."));
+                        alert("Lỗi đặt vé: " + (data?.message || "Vui lòng thử lại."));
                       }
                     } catch (e) {
-                      alert("Lỗi kết nối.");
+                      if (e.response?.status === 401) {
+                        sessionStorage.setItem("auth_redirect", "/checkout");
+                        alert("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại!");
+                        navigate("/login");
+                      } else {
+                        alert("Lỗi đặt vé: " + (e.response?.data?.message || "Lỗi kết nối."));
+                      }
                     } finally {
                       setLoading(false);
                     }

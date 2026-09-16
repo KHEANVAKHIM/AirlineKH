@@ -29,8 +29,9 @@ WORKDIR /var/www
 # Copy toàn bộ source code
 COPY . /var/www
 
-# Cài đặt PHP dependencies (bao gồm faker để tạo dữ liệu mẫu)
-RUN composer install --optimize-autoloader
+# Cài đặt PHP dependencies (tăng timeout và tự động retry nếu mạng GitHub bị nghẽn)
+RUN composer config --global process-timeout 600 && \
+    (composer install --optimize-autoloader --prefer-dist --no-interaction || composer install --optimize-autoloader --prefer-dist --no-interaction)
 
 # Build Frontend React
 WORKDIR /var/www/client

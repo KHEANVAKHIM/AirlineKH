@@ -17,21 +17,36 @@ use Throwable;
 
 class GoogleAuthController extends Controller
 {
-    private function ensureGoogleConfig(): void
+    private function getGoogleDriver()
     {
-        $clientId = config('services.google.client_id') ?: env('GOOGLE_CLIENT_ID') ?: getenv('GOOGLE_CLIENT_ID') ?: ($_SERVER['GOOGLE_CLIENT_ID'] ?? null);
-        $clientSecret = config('services.google.client_secret') ?: env('GOOGLE_CLIENT_SECRET') ?: getenv('GOOGLE_CLIENT_SECRET') ?: ($_SERVER['GOOGLE_CLIENT_SECRET'] ?? null);
-        $redirect = config('services.google.redirect') ?: env('GOOGLE_REDIRECT_URI') ?: getenv('GOOGLE_REDIRECT_URI') ?: (rtrim(env('APP_URL', 'https://airlinekh.onrender.com'), '/') . '/api/auth/google/callback');
+        $clientId = env('GOOGLE_CLIENT_ID') ?: getenv('GOOGLE_CLIENT_ID') ?: config('services.google.client_id') ?: ($_SERVER['GOOGLE_CLIENT_ID'] ?? null);
+        $clientSecret = env('GOOGLE_CLIENT_SECRET') ?: getenv('GOOGLE_CLIENT_SECRET') ?: config('services.google.client_secret') ?: ($_SERVER['GOOGLE_CLIENT_SECRET'] ?? null);
+        $redirect = env('GOOGLE_REDIRECT_URI') ?: getenv('GOOGLE_REDIRECT_URI') ?: config('services.google.redirect') ?: (rtrim(env('APP_URL') ?: getenv('APP_URL') ?: 'https://airlinekh.onrender.com', '/') . '/api/auth/google/callback');
 
-        if (!empty($clientId)) {
-            config(['services.google.client_id' => $clientId]);
+        if ((empty($clientId) || empty($clientSecret)) && file_exists(base_path('.env'))) {
+            $envLines = @file(base_path('.env'), FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [];
+            foreach ($envLines as $line) {
+                $trimmed = trim($line);
+                if (empty($clientId) && str_starts_with($trimmed, 'GOOGLE_CLIENT_ID=')) {
+                    $val = trim(substr($trimmed, 17), " \t\n\r\0\x0B\"'");
+                    if (!empty($val)) $clientId = $val;
+                }
+                if (empty($clientSecret) && str_starts_with($trimmed, 'GOOGLE_CLIENT_SECRET=')) {
+                    $val = trim(substr($trimmed, 21), " \t\n\r\0\x0B\"'");
+                    if (!empty($val)) $clientSecret = $val;
+                }
+            }
         }
-        if (!empty($clientSecret)) {
-            config(['services.google.client_secret' => $clientSecret]);
-        }
-        if (!empty($redirect)) {
-            config(['services.google.redirect' => $redirect]);
-        }
+
+        $config = [
+            'client_id' => (string) $clientId,
+            'client_secret' => (string) $clientSecret,
+            'redirect' => (string) $redirect,
+        ];
+
+        config(['services.google' => $config]);
+
+        return Socialite::buildProvider(\Laravel\Socialite\Two\GoogleProvider::class, $config)->stateless();
     }
 
     /**
@@ -39,7 +54,6 @@ class GoogleAuthController extends Controller
      */
     public function redirectToGoogle(Request $request): JsonResponse|RedirectResponse
     {
-        $this->ensureGoogleConfig();
         $mode = $request->query('mode', 'login'); // 'login' hoặc 'register'
 
         // Tự động nhận diện origin của frontend (từ query param, referer header, hoặc config)
@@ -58,8 +72,7 @@ class GoogleAuthController extends Controller
         }
 
         try {
-            $redirectUrl = Socialite::driver('google')
-                ->stateless()
+            $redirectUrl = $this->getGoogleDriver()
                 ->with([
                     'prompt' => 'select_account',
                     'state' => base64_encode(json_encode([
@@ -98,7 +111,6 @@ class GoogleAuthController extends Controller
      */
     public function handleGoogleCallback(Request $request): RedirectResponse
     {
-        $this->ensureGoogleConfig();
         $frontendUrl = null;
         $mode = 'login';
 
@@ -121,7 +133,7 @@ class GoogleAuthController extends Controller
         }
 
         try {
-            $googleUser = Socialite::driver('google')->stateless()->user();
+            $googleUser = $this->getGoogleDriver()->user();
 
             $googleId = $googleUser->getId();
             $email = $googleUser->getEmail();

@@ -12,7 +12,9 @@ fi
 # 2. Tự động nạp toàn bộ Bảng & Dữ liệu Chuyến bay, Sân bay, Admin mẫu
 php artisan migrate --force --seed || true
 php artisan storage:link 2>/dev/null || true
-php artisan config:cache || true
+php artisan route:clear 2>/dev/null || true
+php artisan view:clear 2>/dev/null || true
+php artisan config:clear 2>/dev/null || true
 
 # 3. Khởi động Web Server trên cổng Render
 echo "🚀 SkyLink Airline is running with Database and AI on port 10000..."

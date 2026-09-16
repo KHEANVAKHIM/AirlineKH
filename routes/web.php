@@ -2,10 +2,22 @@
 
 use Illuminate\Support\Facades\Route;
 
-Route::get('/{any?}', function () {
+Route::get('/', function () {
     $indexPath = public_path('index.html');
     if (file_exists($indexPath)) {
-        return response()->file($indexPath);
+        return response()->file($indexPath, [
+            'Content-Type' => 'text/html; charset=UTF-8'
+        ]);
     }
-    return response('Frontend chưa được build. Vui lòng chạy `npm run build` trong thư mục client.', 404);
+    return response('Frontend chưa được build. Vui lòng kiểm tra dist.', 404);
+});
+
+Route::get('/{any}', function () {
+    $indexPath = public_path('index.html');
+    if (file_exists($indexPath)) {
+        return response()->file($indexPath, [
+            'Content-Type' => 'text/html; charset=UTF-8'
+        ]);
+    }
+    return response('Frontend chưa được build.', 404);
 })->where('any', '^(?!api).*$');

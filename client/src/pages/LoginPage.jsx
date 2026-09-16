@@ -92,9 +92,10 @@ export default function LoginPage() {
     const height = 650;
     const left = window.screen.width / 2 - width / 2;
     const top = window.screen.height / 2 - height / 2;
+    const origin = encodeURIComponent(window.location.origin);
 
     window.open(
-      "/api/auth/google?mode=login",
+      `/api/auth/google?mode=login&origin=${origin}`,
       "google_oauth_popup",
       `width=${width},height=${height},top=${top},left=${left},status=no,toolbar=no,menubar=no`
     );

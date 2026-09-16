@@ -1,6 +1,12 @@
 #!/bin/sh
 set -e
 
+# Đảm bảo file database.sqlite tồn tại và có dữ liệu
+if [ ! -f /var/www/database/database.sqlite ] || [ ! -s /var/www/database/database.sqlite ]; then
+    touch /var/www/database/database.sqlite
+    php artisan migrate:fresh --force --seed || true
+fi
+
 # Đảm bảo quyền truy cập Database SQLite và Storage
 chmod -R 777 /var/www/database /var/www/storage /var/www/bootstrap/cache 2>/dev/null || true
 

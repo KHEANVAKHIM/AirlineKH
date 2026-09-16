@@ -2,12 +2,27 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 
+import path from 'path'
+import { fileURLToPath } from 'url'
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
     tailwindcss(),
     react()
   ],
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, 'src'),
+      '@phosphor-icons/react': path.resolve(__dirname, 'src/lib/phosphor-icons.jsx'),
+    },
+  },
+  build: {
+    outDir: path.resolve(__dirname, '../public'),
+    emptyOutDir: false,
+  },
   server: {
     port: 5173,  // Frontend chạy trên port 5173 (Backend chạy trên port 8000)
     host: '127.0.0.1',

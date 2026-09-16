@@ -24,12 +24,30 @@ class GoogleAuthController extends Controller
     {
         $mode = $request->query('mode', 'login'); // 'login' hoặc 'register'
 
+        // Tự động nhận diện origin của frontend (từ query param, referer header, hoặc config)
+        $origin = $request->query('origin') ?: $request->header('referer');
+        if ($origin) {
+            $parsed = parse_url($origin);
+            if (!empty($parsed['scheme']) && !empty($parsed['host'])) {
+                $port = !empty($parsed['port']) ? ':' . $parsed['port'] : '';
+                $origin = $parsed['scheme'] . '://' . $parsed['host'] . $port;
+            } else {
+                $origin = null;
+            }
+        }
+        if (!$origin) {
+            $origin = env('FRONTEND_URL') ?: $request->getSchemeAndHttpHost();
+        }
+
         try {
             $redirectUrl = Socialite::driver('google')
                 ->stateless()
                 ->with([
                     'prompt' => 'select_account',
-                    'state' => base64_encode(json_encode(['mode' => $mode])),
+                    'state' => base64_encode(json_encode([
+                        'mode' => $mode,
+                        'origin' => $origin,
+                    ])),
                 ])
                 ->redirect()
                 ->getTargetUrl();
@@ -52,7 +70,7 @@ class GoogleAuthController extends Controller
                 ], 500);
             }
 
-            $frontendUrl = env('FRONTEND_URL', 'http://localhost:5173') . '/login?error=' . urlencode('Lỗi kết nối Google');
+            $frontendUrl = rtrim($origin ?: env('FRONTEND_URL', 'http://localhost:5173'), '/') . '/login?error=' . urlencode('Lỗi kết nối Google');
             return redirect($frontendUrl);
         }
     }
@@ -62,16 +80,25 @@ class GoogleAuthController extends Controller
      */
     public function handleGoogleCallback(Request $request): RedirectResponse
     {
-        $frontendUrl = env('FRONTEND_URL', 'http://localhost:5173');
-
-        // Lấy mode từ state (login hay register)
+        $frontendUrl = null;
         $mode = 'login';
+
+        // Lấy mode và origin từ state
         $stateRaw = $request->input('state');
         if ($stateRaw) {
             $decoded = json_decode(base64_decode($stateRaw), true);
-            if (is_array($decoded) && !empty($decoded['mode'])) {
-                $mode = $decoded['mode'];
+            if (is_array($decoded)) {
+                if (!empty($decoded['mode'])) {
+                    $mode = $decoded['mode'];
+                }
+                if (!empty($decoded['origin'])) {
+                    $frontendUrl = rtrim($decoded['origin'], '/');
+                }
             }
+        }
+
+        if (!$frontendUrl) {
+            $frontendUrl = rtrim(env('FRONTEND_URL', $request->getSchemeAndHttpHost()), '/');
         }
 
         try {

@@ -41,9 +41,10 @@ WORKDIR /var/www
 RUN cp -rf /var/www/client/dist/* /var/www/public/ 2>/dev/null || true
 RUN cp -f /var/www/client/public/hero.mp4 /var/www/public/hero.mp4 2>/dev/null || true
 
-# Tạo và nạp sẵn toàn bộ Database Chuyến bay & Admin vào Docker Image
+# Tạo file .env và nạp sẵn toàn bộ Database Chuyến bay & Admin vào Docker Image
 ENV DB_CONNECTION=sqlite
 ENV DB_DATABASE=/var/www/database/database.sqlite
+RUN cp .env.example .env
 RUN touch /var/www/database/database.sqlite && chmod 777 /var/www/database/database.sqlite
 RUN php artisan key:generate --force
 RUN php artisan migrate:fresh --force --seed

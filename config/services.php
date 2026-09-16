@@ -40,8 +40,8 @@ return [
         'embedding_model' => env('OPENAI_EMBEDDING_MODEL', 'text-embedding-3-small'),
     ],
     'gemini' => [
-        'api_key' => env('GEMINI_API_KEY'),
-        'model' => env('GEMINI_MODEL', 'gemini-3.1-flash-lite'),
+        'api_key' => env('GEMINI_API_KEY') ?: getenv('GEMINI_API_KEY') ?: ($_SERVER['GEMINI_API_KEY'] ?? null),
+        'model' => env('GEMINI_MODEL') ?: getenv('GEMINI_MODEL') ?: ($_SERVER['GEMINI_MODEL'] ?? 'gemini-1.5-flash'),
     ],
 
     'qdrant' => [
@@ -56,8 +56,8 @@ return [
     ],
 
     'google' => [
-        'client_id' => env('GOOGLE_CLIENT_ID'),
-        'client_secret' => env('GOOGLE_CLIENT_SECRET'),
-        'redirect' => env('GOOGLE_REDIRECT_URI') ?: (rtrim(env('APP_URL', 'http://localhost'), '/') . '/api/auth/google/callback'),
+        'client_id' => env('GOOGLE_CLIENT_ID') ?: getenv('GOOGLE_CLIENT_ID') ?: ($_SERVER['GOOGLE_CLIENT_ID'] ?? null),
+        'client_secret' => env('GOOGLE_CLIENT_SECRET') ?: getenv('GOOGLE_CLIENT_SECRET') ?: ($_SERVER['GOOGLE_CLIENT_SECRET'] ?? null),
+        'redirect' => env('GOOGLE_REDIRECT_URI') ?: getenv('GOOGLE_REDIRECT_URI') ?: (rtrim(env('APP_URL') ?: getenv('APP_URL') ?: 'https://airlinekh.onrender.com', '/') . '/api/auth/google/callback'),
     ],
 ];

@@ -29,8 +29,8 @@ WORKDIR /var/www
 # Copy toàn bộ source code
 COPY . /var/www
 
-# Cài đặt PHP dependencies
-RUN composer install --no-dev --optimize-autoloader
+# Cài đặt PHP dependencies (bao gồm faker để tạo dữ liệu mẫu)
+RUN composer install --optimize-autoloader
 
 # Build Frontend React
 WORKDIR /var/www/client

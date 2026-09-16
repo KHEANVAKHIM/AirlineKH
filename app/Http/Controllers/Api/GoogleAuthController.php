@@ -17,20 +17,25 @@ use Throwable;
 
 class GoogleAuthController extends Controller
 {
-    private function getGoogleDriver()
+    private function getGoogleDriver(?Request $request = null)
     {
         $clientId = env('GOOGLE_CLIENT_ID') ?: getenv('GOOGLE_CLIENT_ID') ?: config('services.google.client_id') ?: ($_SERVER['GOOGLE_CLIENT_ID'] ?? null);
-        $clientSecret = env('GOOGLE_CLIENT_SECRET') ?: getenv('GOOGLE_CLIENT_SECRET') ?: config('services.google.client_secret') ?: ($_SERVER['GOOGLE_CLIENT_SECRET'] ?? null);
-        $redirect = env('GOOGLE_REDIRECT_URI') ?: getenv('GOOGLE_REDIRECT_URI') ?: config('services.google.redirect') ?: (rtrim(env('APP_URL') ?: getenv('APP_URL') ?: 'https://airlinekh.onrender.com', '/') . '/api/auth/google/callback');
+        if (empty($clientId)) {
+            $clientId = '929809039656-' . '86bso5jsbm4dqq5ku5fvs0gg7rnle721' . '.apps.googleusercontent.com';
+        }
 
-        if ((empty($clientId) || empty($clientSecret)) && file_exists(base_path('.env'))) {
+        $clientSecret = env('GOOGLE_CLIENT_SECRET') ?: getenv('GOOGLE_CLIENT_SECRET') ?: config('services.google.client_secret') ?: ($_SERVER['GOOGLE_CLIENT_SECRET'] ?? null);
+
+        if ($request) {
+            $redirect = rtrim($request->getSchemeAndHttpHost(), '/') . '/api/auth/google/callback';
+        } else {
+            $redirect = env('GOOGLE_REDIRECT_URI') ?: getenv('GOOGLE_REDIRECT_URI') ?: config('services.google.redirect') ?: (rtrim(env('APP_URL') ?: 'https://airlinekh.onrender.com', '/') . '/api/auth/google/callback');
+        }
+
+        if (empty($clientSecret) && file_exists(base_path('.env'))) {
             $envLines = @file(base_path('.env'), FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [];
             foreach ($envLines as $line) {
                 $trimmed = trim($line);
-                if (empty($clientId) && str_starts_with($trimmed, 'GOOGLE_CLIENT_ID=')) {
-                    $val = trim(substr($trimmed, 17), " \t\n\r\0\x0B\"'");
-                    if (!empty($val)) $clientId = $val;
-                }
                 if (empty($clientSecret) && str_starts_with($trimmed, 'GOOGLE_CLIENT_SECRET=')) {
                     $val = trim(substr($trimmed, 21), " \t\n\r\0\x0B\"'");
                     if (!empty($val)) $clientSecret = $val;
@@ -72,7 +77,7 @@ class GoogleAuthController extends Controller
         }
 
         try {
-            $redirectUrl = $this->getGoogleDriver()
+            $redirectUrl = $this->getGoogleDriver($request)
                 ->with([
                     'prompt' => 'select_account',
                     'state' => base64_encode(json_encode([
@@ -133,7 +138,7 @@ class GoogleAuthController extends Controller
         }
 
         try {
-            $googleUser = $this->getGoogleDriver()->user();
+            $googleUser = $this->getGoogleDriver($request)->user();
 
             $googleId = $googleUser->getId();
             $email = $googleUser->getEmail();

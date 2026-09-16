@@ -22,11 +22,17 @@ export const useAuthStore = create((set, get) => ({
       accessToken: token || null,
       isInitialized: true,
     });
-    // Đồng bộ user cơ bản (chỉ UI hiển thị) nếu cần, TUYỆT ĐỐI không lưu access_token vào localStorage
+    if (token) {
+      localStorage.setItem("access_token", token);
+    } else {
+      localStorage.removeItem("access_token");
+    }
     if (user) {
       localStorage.setItem("user_profile_cache", JSON.stringify(user));
+      localStorage.setItem("user", JSON.stringify(user));
     } else {
       localStorage.removeItem("user_profile_cache");
+      localStorage.removeItem("user");
     }
   },
 
@@ -71,6 +77,8 @@ export const useAuthStore = create((set, get) => ({
           isInitialized: true,
           isLoading: false,
         });
+        localStorage.setItem("access_token", response.data.access_token);
+        localStorage.setItem("user", JSON.stringify(response.data.user));
         localStorage.setItem(
           "user_profile_cache",
           JSON.stringify(response.data.user)

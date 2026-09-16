@@ -64,9 +64,9 @@ export default function PaymentRetry() {
   };
 
   const handlePayment = async () => {
-    const token = localStorage.getItem("access_token") || sessionStorage.getItem("access_token");
+    const token = useAuthStore.getState().accessToken || localStorage.getItem("access_token") || sessionStorage.getItem("access_token");
     if (!token) {
-      alert("Vui lòng đăng nhập lại.");
+      alert("Vui lòng đăng nhập lại để thanh toán.");
       navigate("/login");
       return;
     }

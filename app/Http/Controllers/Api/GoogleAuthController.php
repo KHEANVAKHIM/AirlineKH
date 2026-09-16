@@ -17,11 +17,29 @@ use Throwable;
 
 class GoogleAuthController extends Controller
 {
+    private function ensureGoogleConfig(): void
+    {
+        $clientId = config('services.google.client_id') ?: env('GOOGLE_CLIENT_ID') ?: getenv('GOOGLE_CLIENT_ID') ?: ($_SERVER['GOOGLE_CLIENT_ID'] ?? null);
+        $clientSecret = config('services.google.client_secret') ?: env('GOOGLE_CLIENT_SECRET') ?: getenv('GOOGLE_CLIENT_SECRET') ?: ($_SERVER['GOOGLE_CLIENT_SECRET'] ?? null);
+        $redirect = config('services.google.redirect') ?: env('GOOGLE_REDIRECT_URI') ?: getenv('GOOGLE_REDIRECT_URI') ?: (rtrim(env('APP_URL', 'https://airlinekh.onrender.com'), '/') . '/api/auth/google/callback');
+
+        if (!empty($clientId)) {
+            config(['services.google.client_id' => $clientId]);
+        }
+        if (!empty($clientSecret)) {
+            config(['services.google.client_secret' => $clientSecret]);
+        }
+        if (!empty($redirect)) {
+            config(['services.google.redirect' => $redirect]);
+        }
+    }
+
     /**
      * Chuyển hướng người dùng sang trang đăng nhập của Google
      */
     public function redirectToGoogle(Request $request): JsonResponse|RedirectResponse
     {
+        $this->ensureGoogleConfig();
         $mode = $request->query('mode', 'login'); // 'login' hoặc 'register'
 
         // Tự động nhận diện origin của frontend (từ query param, referer header, hoặc config)
@@ -80,6 +98,7 @@ class GoogleAuthController extends Controller
      */
     public function handleGoogleCallback(Request $request): RedirectResponse
     {
+        $this->ensureGoogleConfig();
         $frontendUrl = null;
         $mode = 'login';
 

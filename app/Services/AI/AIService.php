@@ -14,7 +14,7 @@ class AIService
 
     public function __construct()
     {
-        $key = config('services.gemini.api_key') ?: env('GEMINI_API_KEY');
+        $key = config('services.gemini.api_key') ?: env('GEMINI_API_KEY') ?: getenv('GEMINI_API_KEY') ?: ($_SERVER['GEMINI_API_KEY'] ?? null);
 
         // Direct .env file fallback in case of cached config or env issues
         if (empty($key) && file_exists(base_path('.env'))) {
@@ -22,14 +22,17 @@ class AIService
             foreach ($envLines as $line) {
                 $trimmed = trim($line);
                 if (str_starts_with($trimmed, 'GEMINI_API_KEY=')) {
-                    $key = trim(substr($trimmed, 15), " \t\n\r\0\x0B\"'");
-                    break;
+                    $val = trim(substr($trimmed, 15), " \t\n\r\0\x0B\"'");
+                    if (!empty($val)) {
+                        $key = $val;
+                        break;
+                    }
                 }
             }
         }
 
-        $this->apiKey = (string) $key;
-        $this->model = (string) (config('services.gemini.model') ?: env('GEMINI_MODEL', 'gemini-2.0-flash'));
+        $this->apiKey = (string) ($key ?: '');
+        $this->model = (string) (config('services.gemini.model') ?: env('GEMINI_MODEL') ?: getenv('GEMINI_MODEL') ?: ($_SERVER['GEMINI_MODEL'] ?? 'gemini-1.5-flash'));
 
         if ($this->apiKey === '') {
             throw new RuntimeException('GEMINI_API_KEY is not configured.');

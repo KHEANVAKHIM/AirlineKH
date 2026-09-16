@@ -35,10 +35,12 @@ RUN composer install --no-dev --optimize-autoloader
 WORKDIR /var/www/client
 RUN npm install && npm run build
 
-# Quay lại thư mục gốc và phân quyền
+# Quay lại thư mục gốc và sao chép Frontend vào public
 WORKDIR /var/www
-RUN chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache
-RUN chmod -R 775 /var/www/storage /var/www/bootstrap/cache
+RUN cp -rf /var/www/client/dist/* /var/www/public/ 2>/dev/null || true
+RUN cp -f /var/www/client/public/hero.mp4 /var/www/public/hero.mp4 2>/dev/null || true
+RUN chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache /var/www/public
+RUN chmod -R 775 /var/www/storage /var/www/bootstrap/cache /var/www/public
 
 # Expose port HTTP & HTTPS
 EXPOSE 80 443

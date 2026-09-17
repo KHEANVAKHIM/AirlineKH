@@ -85,6 +85,10 @@ export default function HomePage() {
       alert("Vui lòng chọn đầy đủ điểm đi và điểm đến.");
       return;
     }
+    if (searchData.departure === searchData.arrival) {
+      alert("Điểm đi và điểm đến không được trùng nhau. Vui lòng chọn lại!");
+      return;
+    }
     if (!searchData.date) {
       alert("Vui lòng chọn ngày đi.");
       return;
@@ -314,7 +318,13 @@ export default function HomePage() {
               >
                 <option value="">Chọn điểm đi</option>
                 {(Array.isArray(airports) ? airports : []).map(ap => (
-                  <option key={ap.id || ap.code} value={ap.code}>{ap.city} ({ap.code})</option>
+                  <option 
+                    key={ap.id || ap.code} 
+                    value={ap.code}
+                    disabled={ap.code === searchData.arrival}
+                  >
+                    {ap.city} ({ap.code}){ap.code === searchData.arrival ? ' - Đã chọn ở Điểm đến' : ''}
+                  </option>
                 ))}
               </select>
             </div>
@@ -331,7 +341,13 @@ export default function HomePage() {
               >
                 <option value="">Bạn muốn đến đâu?</option>
                 {(Array.isArray(airports) ? airports : []).map(ap => (
-                  <option key={ap.id || ap.code} value={ap.code}>{ap.city} ({ap.code})</option>
+                  <option 
+                    key={ap.id || ap.code} 
+                    value={ap.code}
+                    disabled={ap.code === searchData.departure}
+                  >
+                    {ap.city} ({ap.code}){ap.code === searchData.departure ? ' - Đã chọn ở Điểm đi' : ''}
+                  </option>
                 ))}
               </select>
             </div>

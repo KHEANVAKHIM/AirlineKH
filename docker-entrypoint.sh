@@ -43,6 +43,15 @@ if [ -n "$APP_KEY" ]; then
     echo "APP_KEY=$APP_KEY" >> /var/www/.env
 fi
 
+# Đồng bộ cấu hình gửi Email (SMTP)
+for var in MAIL_MAILER MAIL_HOST MAIL_PORT MAIL_USERNAME MAIL_PASSWORD MAIL_ENCRYPTION MAIL_FROM_ADDRESS MAIL_FROM_NAME QUEUE_CONNECTION; do
+    eval val=\$$var
+    if [ -n "$val" ]; then
+        sed -i "/^$var=/d" /var/www/.env 2>/dev/null || true
+        echo "$var=\"$val\"" >> /var/www/.env
+    fi
+done
+
 # Đảm bảo quyền truy cập Database SQLite, Storage và .env
 chmod -R 777 /var/www/database /var/www/storage /var/www/bootstrap/cache /var/www/.env 2>/dev/null || true
 

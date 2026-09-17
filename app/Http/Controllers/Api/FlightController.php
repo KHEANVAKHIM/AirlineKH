@@ -67,6 +67,16 @@ class FlightController extends Controller
         // Khi FE gửi đủ 3 params (from, to, date), kích hoạt Proxy.
         // filled() kiểm tra params tồn tại VÀ không rỗng (khác has()).
         if ($request->filled(['from', 'to', 'date'])) {
+            $from = strtoupper(trim((string) $request->input('from')));
+            $to = strtoupper(trim((string) $request->input('to')));
+
+            if ($from === $to) {
+                return response()->json([
+                    'status'  => 'error',
+                    'message' => 'Điểm khởi hành và điểm đến không được trùng nhau.',
+                    'data'    => [],
+                ], 422);
+            }
 
             // trip_type: mặc định 'one_way' nếu FE không gửi
             $tripType = $request->input('trip_type', 'one_way');

@@ -26,10 +26,19 @@ class GoogleAuthController extends Controller
 
         $clientSecret = env('GOOGLE_CLIENT_SECRET') ?: getenv('GOOGLE_CLIENT_SECRET') ?: config('services.google.client_secret') ?: ($_SERVER['GOOGLE_CLIENT_SECRET'] ?? null);
 
-        if ($request) {
-            $redirect = rtrim($request->getSchemeAndHttpHost(), '/') . '/api/auth/google/callback';
+        $explicitRedirect = env('GOOGLE_REDIRECT_URI') ?: getenv('GOOGLE_REDIRECT_URI') ?: config('services.google.redirect');
+
+        if (!empty($explicitRedirect) && !str_contains($explicitRedirect, '127.0.0.1') && !str_contains($explicitRedirect, 'localhost')) {
+            $redirect = $explicitRedirect;
+        } elseif ($request) {
+            $host = $request->getHttpHost();
+            $isHttps = $request->secure() 
+                || strtolower((string) $request->header('x-forwarded-proto')) === 'https'
+                || str_contains($host, 'onrender.com');
+            $scheme = $isHttps ? 'https' : 'http';
+            $redirect = $scheme . '://' . $host . '/api/auth/google/callback';
         } else {
-            $redirect = env('GOOGLE_REDIRECT_URI') ?: getenv('GOOGLE_REDIRECT_URI') ?: config('services.google.redirect') ?: (rtrim(env('APP_URL') ?: 'https://airlinekh.onrender.com', '/') . '/api/auth/google/callback');
+            $redirect = $explicitRedirect ?: (rtrim(env('APP_URL') ?: 'https://airlinekh.onrender.com', '/') . '/api/auth/google/callback');
         }
 
         if (empty($clientSecret) && file_exists(base_path('.env'))) {

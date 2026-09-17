@@ -56,13 +56,17 @@ class CheckInController extends Controller
             $loggedInUser = $request->user('sanctum');
             $targetEmail = $request->input('email') ?? $loggedInUser?->email;
 
-            // 4. Dispatch job để gửi email Boarding Pass
-            SendBoardingPassEmailJob::dispatch($boardingPass['boarding_pass_id'], $targetEmail);
+            // 4. Dispatch job để gửi email Boarding Pass (bọc try-catch để nếu SMTP timeout/bị chặn trên Cloud thì Check-in vẫn thành công)
+            try {
+                SendBoardingPassEmailJob::dispatch($boardingPass['boarding_pass_id'], $targetEmail);
+            } catch (\Throwable $mailEx) {
+                \Illuminate\Support\Facades\Log::warning("Check-in mail delivery skipped/failed: " . $mailEx->getMessage());
+            }
 
-            // 4. Trả về kết quả Check-in thành công
+            // 5. Trả về kết quả Check-in thành công
             return response()->json([
                 'status' => 'success',
-                'message' => 'Check-in thành công! Thẻ lên máy bay đã gửi đến email của bạn.',
+                'message' => 'Check-in thành công! Thẻ lên máy bay đã được tạo.',
                 'data' => $boardingPass,
             ], 200);
 

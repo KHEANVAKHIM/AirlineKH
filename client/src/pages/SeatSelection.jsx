@@ -370,8 +370,15 @@ export default function SeatSelection() {
                 <p className="font-medium text-sm">Đang tải sơ đồ ghế...</p>
               </div>
             ) : error ? (
-              <div className="bg-red-50 text-red-600 p-8 rounded-[2rem] font-medium text-center border border-red-100">
-                {error}
+              <div className="bg-red-50 text-red-600 p-8 rounded-[2rem] font-medium text-center border border-red-100 flex flex-col items-center gap-4">
+                <p>{error}</p>
+                <button
+                  type="button"
+                  onClick={() => navigate("/flights")}
+                  className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-bold transition-all shadow-md cursor-pointer"
+                >
+                  ← Chọn lại chuyến bay
+                </button>
               </div>
             ) : (
               renderSeatGrid()

@@ -135,6 +135,26 @@ class FlightController extends Controller
         // Tất cả ghế của máy bay này
         $seats = Seat::where('aircraft_id', $flight->aircraft_id)->get();
 
+        // Tự động khôi phục / tạo 180 ghế nếu máy bay chưa có ghế trong DB
+        if ($seats->isEmpty() && $flight->aircraft_id) {
+            $seatsData = [];
+            $letters = ['A', 'B', 'C', 'D', 'E', 'F'];
+            for ($row = 1; $row <= 30; $row++) {
+                foreach ($letters as $letter) {
+                    $seatClass = ($row <= 5) ? 2 : 1;
+                    $seatsData[] = [
+                        'aircraft_id' => $flight->aircraft_id,
+                        'seat_number' => $row . $letter,
+                        'seat_class'  => $seatClass,
+                        'created_at'  => now(),
+                        'updated_at'  => now(),
+                    ];
+                }
+            }
+            Seat::insert($seatsData);
+            $seats = Seat::where('aircraft_id', $flight->aircraft_id)->get();
+        }
+
         // Những ghế đã bị khóa trong Database (có vé nối với booking đang pending còn hạn hoặc đã paid)
         $lockedSeatIdsDb = \App\Models\Ticket::where('flight_id', $id)
             ->whereHas('booking', function ($query) {
